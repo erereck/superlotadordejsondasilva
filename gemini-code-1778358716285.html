@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monstrous JSON Generator</title>
+    <style>
+        /* Tema Escuro para Devs */
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            background: #121212; 
+            color: #e0e0e0; 
+            margin: 0; 
+            padding: 40px 20px; 
+            display: flex; 
+            justify-content: center; 
+        }
+        .container { 
+            background: #1e1e1e; 
+            padding: 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); 
+            max-width: 500px; 
+            width: 100%; 
+            border: 1px solid #333;
+        }
+        h1 { 
+            color: #bb86fc; 
+            margin-top: 0; 
+            text-align: center;
+        }
+        p {
+            text-align: center;
+            color: #aaa;
+            font-size: 14px;
+            margin-bottom: 25px;
+        }
+        label { 
+            display: block; 
+            margin-top: 15px; 
+            font-weight: 600; 
+            color: #cfcfcf; 
+        }
+        input[type="number"] { 
+            width: 100%; 
+            padding: 12px; 
+            margin-top: 8px; 
+            background: #2d2d2d; 
+            border: 1px solid #444; 
+            color: #fff; 
+            border-radius: 4px; 
+            box-sizing: border-box; 
+            font-size: 16px;
+        }
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #bb86fc;
+        }
+        button { 
+            background: #03dac6; 
+            color: #000; 
+            border: none; 
+            padding: 15px; 
+            margin-top: 30px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            width: 100%; 
+            font-size: 16px; 
+            transition: background 0.2s, transform 0.1s; 
+        }
+        button:hover { 
+            background: #018786; 
+        }
+        button:active {
+            transform: scale(0.98);
+        }
+        button:disabled { 
+            background: #555; 
+            color: #888;
+            cursor: not-allowed; 
+        }
+        #status { 
+            margin-top: 20px; 
+            font-size: 14px; 
+            text-align: center; 
+            font-weight: bold;
+            min-height: 20px;
+        }
+        .info { 
+            font-size: 12px; 
+            color: #777; 
+            margin-top: 4px; 
+            font-weight: normal;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Monstrous JSON</h1>
+        <p>Gere payloads gigantescos dinamicamente para testar a resiliência dos seus parsers.</p>
+
+        <label>Nível de Profundidade (Max Depth)
+            <input type="number" id="maxDepth" value="5" min="1" max="20">
+            <div class="info">Quantos níveis de aninhamento (objetos dentro de objetos). Cuidado: cresce exponencialmente.</div>
+        </label>
+
+        <label>Largura (Chaves/Itens por Nível)
+            <input type="number" id="breadth" value="8" min="1" max="100">
+            <div class="info">Quantidade de propriedades ou itens de array gerados em CADA nível.</div>
+        </label>
+
+        <label>Tamanho das Strings (Caracteres)
+            <input type="number" id="strLen" value="500" min="10" max="50000">
+            <div class="info">Aumente para gerar arquivos mais pesados (2MB+) sem estourar a memória RAM tão rápido.</div>
+        </label>
+
+        <button id="generateBtn">Gerar e Baixar Monstro</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        // Função auxiliar para gerar strings aleatórias longas
+        function generateRandomString(length) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ';
+            let result = '';
+            // Otimização: criar pedaços menores e repetir para não travar tanto o loop
+            const chunkLen = Math.min(length, 100);
+            let chunk = '';
+            for (let i = 0; i < chunkLen; i++) {
+                chunk += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            while (result.length < length) {
+                result += chunk;
+            }
+            return result.substring(0, length);
+        }
+
+        // Função recursiva para montar a estrutura do JSON
+        function buildMonstro(currentDepth, maxDepth, breadth, strLen) {
+            // Caso base: se atingiu a profundidade, retorna dados primitivos "pesados"
+            if (currentDepth >= maxDepth) {
+                const rand = Math.random();
+                if (rand < 0.6) return generateRandomString(strLen); // Maioria será string gigante
+                if (rand < 0.8) return Math.random() * 9999999.99;
+                if (rand < 0.95) return Math.random() > 0.5;
+                return null;
+            }
+
+            // Define aleatoriamente se o nó atual será um Array ou um Objeto
+            const isArray = Math.random() > 0.4; 
+
+            if (isArray) {
+                const arr = [];
+                for (let i = 0; i < breadth; i++) {
+                    arr.push(buildMonstro(currentDepth + 1, maxDepth, breadth, strLen));
+                }
+                return arr;
+            } else {
+                const obj = {};
+                for (let i = 0; i < breadth; i++) {
+                    const key = 'chave_aleatoria_' + generateRandomString(10).replace(/ /g, '_');
+                    obj[key] = buildMonstro(currentDepth + 1, maxDepth, breadth, strLen);
+                }
+                return obj;
+            }
+        }
+
+        document.getElementById('generateBtn').addEventListener('click', () => {
+            const btn = document.getElementById('generateBtn');
+            const status = document.getElementById('status');
+            const maxDepth = parseInt(document.getElementById('maxDepth').value);
+            const breadth = parseInt(document.getElementById('breadth').value);
+            const strLen = parseInt(document.getElementById('strLen').value);
+
+            btn.disabled = true;
+            status.style.color = '#bb86fc';
+            status.innerText = 'Processando... (O navegador pode congelar por alguns segundos)';
+
+            // SetTimeout permite que a UI atualize o botão/status antes da thread travar com o processamento
+            setTimeout(() => {
+                try {
+                    const startTime = performance.now();
+                    
+                    // Estrutura raiz para organizar a bagunça
+                    const payload = {
+                        info: {
+                            geradoEm: new Date().toISOString(),
+                            configuracao: { profundidade: maxDepth, largura: breadth, tamanhoStrings: strLen },
+                            aviso: "JSON gerado para testes de estresse em parsers/leitores."
+                        },
+                        dados: buildMonstro(0, maxDepth, breadth, strLen)
+                    };
+
+                    status.innerText = 'Convertendo objeto para texto...';
+
+                    setTimeout(() => {
+                        // Formata o JSON (os 2 espaços de indentação aumentam BASTANTE o tamanho final do arquivo)
+                        const jsonString = JSON.stringify(payload, null, 2); 
+                        
+                        const bytes = new Blob([jsonString]).size;
+                        const sizeMB = (bytes / (1024 * 1024)).toFixed(2);
+                        const timeTaken = ((performance.now() - startTime) / 1000).toFixed(2);
+
+                        status.style.color = '#03dac6';
+                        status.innerText = `Pronto! Tamanho: ${sizeMB} MB gerados em ${timeTaken}s. Baixando...`;
+
+                        // Força o download do arquivo via Blob
+                        const blob = new Blob([jsonString], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `payload_monstro_${sizeMB.replace('.', '_')}MB.json`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+
+                        btn.disabled = false;
+                    }, 50);
+
+                } catch (error) {
+                    status.style.color = '#ff5252';
+                    status.innerText = 'Erro: Estouro de Memória (Call Stack). Diminua a Profundidade ou a Largura!';
+                    console.error(error);
+                    btn.disabled = false;
+                }
+            }, 100);
+        });
+    </script>
+</body>
+</html>
